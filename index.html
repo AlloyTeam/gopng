@@ -129,7 +129,7 @@
 						<div class="row">
 								<div class="span2">
 									<p>
-										<a id="png_link" name="sprite.png" title="download png" href="###">
+										<a id="png_link" download="sprite.png" title="download png" href="###">
 											<button class="btn btn-info">
 												<i class="icon-file icon-white"></i>Download
 											</button>
@@ -144,7 +144,7 @@
 					</div>
 					<div id="css_out">
 						<p>
-							<a class="btn btn-info" id="css_link" title="download css" href="###"><i class="icon-file icon-white"></i>Download</a>
+							<a class="btn btn-info" id="css_link" download="style.css" title="download css" href="###"><i class="icon-file icon-white"></i>Download</a>
 						</p>
 						<h6>css code:</h6>
 						<pre id="target_css">
@@ -155,7 +155,7 @@
 							<h1>Export!</h1>
 							<p>Export and save the file, then you can recover your workspace by drop it on the canvas next time!</p>
 							<p>
-								<a class="btn btn-primary btn-large" id="export_workspace" href="###">Export</a>
+								<a class="btn btn-primary btn-large" download="gopngdata.json" id="export_workspace" href="###">Export</a>
 							</p>
 						</div>
 					</div>
@@ -947,7 +947,7 @@
 							return {x:o.x, y:o.y, w:o.w, h:o.h, base64:o.base64, name:o.name};
 						});
 						var base64 = encodeBase64(JSON.stringify(outfile));
-						window.open( 'data:application/duwei-data;base64,' + base64);
+						getEl('export_workspace').src = 'data:application/duwei-data;base64,' + base64;
 					};
 					bindClose('browser_notice');
 				};
