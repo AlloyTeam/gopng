@@ -947,7 +947,7 @@
 							return {x:o.x, y:o.y, w:o.w, h:o.h, base64:o.base64, name:o.name};
 						});
 						var base64 = encodeBase64(JSON.stringify(outfile));
-						getEl('export_workspace').src = 'data:application/duwei-data;base64,' + base64;
+						window.open('data:application/duwei-data;base64,' + base64);
 					};
 					bindClose('browser_notice');
 				};
