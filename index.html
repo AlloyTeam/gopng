@@ -45,6 +45,12 @@
 			#absolute_path, #relative_path, #css_template{
 				width: 580px;
 			}
+			.github_icon{
+				width: 18px;
+				height: 18px;
+				background:url(./img/github_icon.png) no-repeat 0px 2px;
+				float:left;
+			}
 
 		</style>
 	</head> 
@@ -103,6 +109,13 @@
 									<div class="controls">
 										<textarea class="input-xlarge" id="css_template" rows="25">
 										</textarea>
+
+										<p class="help-block">Using John Resig's Micro-Templating</p>
+										<p class="help-block">Variables can be uesd: relative_path, absolute_path, x, y, w, h</p>
+										<p>
+											<img src="./img/cord.png" title="about x,y,w,h" />
+										</p>
+										<p>name for fileName without ext</p>
 									</div>
 								</div>
 								<div class="form-actions">
@@ -239,6 +252,9 @@
 								</div>
 							</fieldset>
 						</form>
+						<p>
+							<a class="btn" style="margin-left:100px;" title="view on github" href="https://github.com/AlloyTeam/gopng" target="_blank"><span class="github_icon"></span>View On GitHub</a>
+						</p>
 					</div>
 				</div>
 
@@ -1010,7 +1026,7 @@
 			resetCanvas();
 			zoomer.init();
 			context.font = '28pt Calibri';
-			context.fillText("drop pngs or an export file here...", config.canvas_width/2 - 240, config.canvas_height/2 - 40);
+			context.fillText("drop Images or an export file here...", config.canvas_width/2 - 260, config.canvas_height/2 - 40);
 			context.font = '10pt Calibri';
 		})('gopng');
     </script>
