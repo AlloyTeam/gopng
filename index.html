@@ -518,6 +518,9 @@
 						(function(f) {
 							var name = f.name,
 								type = f.type;
+							if(typeof FileReader == 'undefined') {
+								alert('Sorry, FileReader() not supported, switch to Chrome and try again.')
+							}
 							var reader = new FileReader();
 							reader.onload = function(e) {
 								var dataURL = e.target.result;
