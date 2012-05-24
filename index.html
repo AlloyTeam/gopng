@@ -156,7 +156,7 @@
 							<h1>Export!</h1>
 							<p>Export and save the file, then you can recover your workspace by drop it on the canvas next time!</p>
 							<p>
-								<a class="btn btn-primary btn-large" id="export_workspace" href="###">Export</a>
+								<a class="btn btn-primary btn-large" download="export.json" id="export_workspace" href="###">Export</a>
 							</p>
 						</div>
 					</div>
@@ -399,7 +399,7 @@
 				dataURL = canvas.toDataURL();
 				var img = new Image();
 				img.src = dataURL;
-				getEl('png_link').href = dataURL.replace('data:image/','data:application/');
+				getEl('png_link').href = dataURL.replace('data:image/','data:image/');
 				getEl('png_link').style.display = 'inline';
 				document.getElementById('img').innerHTML = '';
 				document.getElementById('img').appendChild(img);
@@ -410,11 +410,14 @@
 					css_pices.push(css_pice);
 				});
 				var css_text = css_pices.join('').split('[enter]').join('\n')
-				getEl('css_link').href = 'data:application/css;base64,' + encodeBase64(css_text);
-				getEl('target_css').innerText = css_text;
+				getEl('css_link').href = 'data:text/css;base64,' + encodeBase64(css_text);
+				getEl('target_css').innerHTML = XssDefender(css_text);
 				getEl('css_link').style.display = 'inline';
 			}
-
+			var XssDefender = function(s) {
+				s = s.replace(/&/g,"&amp;").replace(/>/g,"&gt;").replace(/</g,"&lt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+				return s;
+			};
 			var resetCanvasSize = function(w, h) {
 				if (!w && !h) {
 					canvas.width = picture_width;
@@ -674,8 +677,8 @@
 			var mousedown = 0;
 			var lastmovex, lastmovey;
 			zoom_canvas.onmousemove = canvas.onmousemove = function(e) {
-				var movex = e.offsetX;
-				var movey = e.offsetY;
+				var movex = e.offsetX || e.layerX;
+				var movey = e.offsetY || e.layerY;
 				if(target) {
 					zoomer.setXY(movex, movey);
 					var newx = target.x + (movex-lastmovex);
@@ -706,8 +709,8 @@
 			};
 			zoom_canvas.onmousedown = canvas.onmousedown = function(e) {
 				mousedown = 1;
-				lastmovex = e.offsetX;
-				lastmovey = e.offsetY;
+				lastmovex = e.offsetX || e.layerX;
+				lastmovey = e.offsetY || e.layerY;
 				target = ifhit(lastmovex, lastmovey);
 				zoomer.setXY(lastmovex, lastmovey);
 				refresh();
@@ -948,13 +951,16 @@
 						initialActionsMenu();
 					};
 					getEl('export_workspace').onclick = function(e) {
+						//e.preventDefault();
+						e.stopPropagation();
 						var outfile = {};
 						outfile.config = config;
 						outfile.objects = imgObjects.map(function(o){
 							return {x:o.x, y:o.y, w:o.w, h:o.h, base64:o.base64, name:o.name};
 						});
 						var base64 = encodeBase64(JSON.stringify(outfile));
-						window.open('data:application/duwei-data;base64,' + base64);
+						getEl('export_workspace').href = 'data:text/json;base64,' + base64;
+						//window.open('data:application/duwei-data;base64,' + base64);
 					};
 					bindClose('browser_notice');
 				};
