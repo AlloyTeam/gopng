@@ -4,8 +4,9 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta author="duwei pandorid[at]gmail.com" />
-		<meta version="0.1.0apha" />
-		<title>Go!Png</title>
+		<meta version="0.1.1alpha" />
+		<meta name="description" content="html5 css sprite tool gopng" />
+		<title>GoPng</title>
 		<link rel="stylesheet" type="text/css" href="./css/bootstrap.min.css">
 		<link rel="stylesheet" type="text/css" href="http://qplus1.idqqimg.com/module/common/scrollbar/scrollstyle.css">
 		<style>
@@ -204,11 +205,20 @@
 							<fieldset>
 								<h6>Packer modes</h6>
 								<div class="control-group">
-									<label class="control-label">Packer modes</label>
+									<label class="control-label">Fixed Size</label>
 									<div class="controls">
-										<div class="btn-group" id="packer_modes">
+										<div class="btn-group" id="packer_modes_fixed">
 											<button class="btn btn-primary" id="vertical">Vertical</button>
 											<button class="btn btn-primary" id="bintree">BinTree</button>
+										</div>
+									</div>
+								</div>
+								<div class="control-group">
+									<label class="control-label">Auto Grow</label>
+									<div class="controls">
+										<div class="btn-group" id="packer_modes_grow">
+											<!--<button class="btn btn-primary disabled" id="verticalGrow" onclick="return false;">Vertical</button>-->
+											<button class="btn btn-primary" id="bintreeGrow" onclick="return false;">BinTree</button>
 										</div>
 									</div>
 								</div>
@@ -390,7 +400,6 @@
 				canvas.width  = config.canvas_width;
 				zoom_canvas.height = config.canvas_height * 2;
 				zoom_canvas.width = config.canvas_width * 2;
-				posCaculate();
 				refresh();
 			}
 
@@ -400,6 +409,8 @@
 				}
 				canvasSizeCaculate();
 				resetCanvasSize();
+
+				refresh();
 				dataURL = canvas.toDataURL();
 				var img = new Image();
 				img.src = dataURL;
@@ -408,6 +419,7 @@
 				document.getElementById('img').innerHTML = '';
 				document.getElementById('img').appendChild(img);
 				resetCanvasSize(config.canvas_width, config.canvas_height);
+				refresh();
 				var css_pices = [];
 				imgObjects.map(function(o){
 					var css_pice = template(config.template, {w:o.w, h:o.h, x:o.x, y:o.y, absolute_path:config.absolute_path, name:o.name.split('.')[0], relative_path:config.relative_path});
@@ -430,7 +442,6 @@
 					canvas.width = w;
 					canvas.height = h;
 				}
-				refresh();
 			};
 			var clear = function() {
 				context.clearRect(0, 0, canvas.width, canvas.height);
@@ -440,6 +451,7 @@
 			};
 			var posCaculate = function(){};
 			var verticalPacker = function() {
+				resetCanvas();
 				var h_diff = 0;
 				imgObjects.map(function(o, i, all) {
 					o.y = h_diff;
@@ -456,7 +468,7 @@
 						this.root = {x:0, y:0, w:w, h:h};
 					},
 					fit: function(objs) {
-						var node, block, _this = this;
+						var node, _this = this;
 						objs.map(function(o, i){
 							if (node = _this.findNode(_this.root, o.w, o.h)) {
 								var fit = _this.splitNode(node, o.w, o.h);
@@ -465,12 +477,14 @@
 							}
 						});
 					},
-					findNode: function(root, w, h) {
-						if(root.used) {
-							return this.findNode(root.right, w, h) || this.findNode(root.down, w, h);
-						}else if (w <= root.w && h <= root.h) {
-							return root;
-						}else {
+					findNode: function(node, w, h) {
+						if (node.used) {
+							return this.findNode(node.right, w, h) || this.findNode(node.down, w, h);
+						}
+						else if ((w <= node.w) && (h <= node.h)) {
+							return node;
+						}
+						else {
 							return null;
 						}
 					},
@@ -482,16 +496,122 @@
 					}
 				};
 				return function() {
+					resetCanvas();
 					var packer = new Packer(config.canvas_width, config.canvas_height);
 					imgObjects.sort(function(a,b){
 						if(b.h-a.h!=0) {
 							return b.h-a.h;
 						}else {
-							return b.w-a.w;
+							return a.w-b.w;
 						}
 					})
 					packer.fit(imgObjects);
 				};
+			})();
+
+			//auto size grow
+			var binTreeGrowPacker = (function() {
+				Packer = function() { };
+				Packer.prototype = {
+					fit: function(objs) {
+						var node, len = objs.length, _this = this;
+						var w = len? objs[0].w : 0;
+						var h = len? objs[0].h : 0;
+						this.root = { x: 0, y: 0, w: w, h: h };
+						objs.map(function(o, i){
+							if (node = _this.findNode(_this.root, o.w, o.h)) {
+								var fit = _this.splitNode(node, o.w, o.h);
+								o.x = fit.x;
+								o.y = fit.y;
+							}
+							else {
+								var fit = _this.growNode(o.w, o.h);
+								o.x = fit.x;
+								o.y = fit.y;
+							}
+						});
+						return this.root;
+					},
+					findNode: function(node, w, h) {
+						if (node.used) {
+							return this.findNode(node.right, w, h) || this.findNode(node.down, w, h);
+						}
+						else if ((w <= node.w) && (h <= node.h)) {
+							return node;
+						}
+						else {
+							return null;
+						}
+					},
+					splitNode: function(node, w, h) {
+						node.used = true;
+						node.down  = { x: node.x,     y: node.y + h, w: node.w,     h: node.h - h };
+						node.right = { x: node.x + w, y: node.y,     w: node.w - w, h: h          };
+						return node;
+					},
+					growNode: function(w, h) {
+						var canGrowRight = (h <= this.root.h);
+						var canGrowDown  = (w <= this.root.w);
+						var shouldGrowRight = canGrowRight && (this.root.h >= (this.root.w + w));
+						var shouldGrowDown  = canGrowDown  && (this.root.w >= (this.root.h + h)); 
+						if (shouldGrowRight) {
+							return this.growRight(w, h);
+						}
+						else if (shouldGrowDown) {
+							return this.growDown(w, h);
+						}
+						else if (canGrowRight) {
+							return this.growRight(w, h);
+						}
+						else if (canGrowDown) {
+							return this.growDown(w, h);
+						}
+					},
+					growRight: function(w, h) {
+						this.root = {
+							used: true,
+							x: 0,
+							y: 0,
+							w: this.root.w + w,
+							h: this.root.h,
+							down: this.root.down,
+							right: { x: this.root.w, y: 0, w: w, h: this.root.h }
+						};
+						node = this.findNode(this.root, w, h);
+						return this.splitNode(node, w, h);
+					},
+					growDown: function(w, h) {
+						this.root = {
+							used: true,
+							x: 0,
+							y: 0,
+							w: this.root.w,
+							h: this.root.h + h,
+							down:  { x: 0, y: this.root.h, w: this.root.w, h: h },
+							right: this.root.right
+						};
+						node = this.findNode(this.root, w, h);
+						return this.splitNode(node, w, h);
+					}
+				};
+
+				return function() {
+					var packer = new Packer();
+					if(!imgObjects.length) return;
+					imgObjects.sort(function(a,b){
+						if(b.h-a.h!=0) {
+							return b.h-a.h;
+						}else {
+							return a.w-b.w;
+						}
+					})
+					var root = packer.fit(imgObjects);
+					config.canvas_width = root.w;
+					config.canvas_height = root.h;
+					resetCanvas();
+					getEl('canvas_width').value = config.canvas_width;
+					getEl('canvas_height').value = config.canvas_height;
+				}
 			})();
 			
 
@@ -761,6 +881,10 @@
 				}
 			};
 
+			var nodeList2Array = function(nodelist) {
+				return Array.prototype.concat.apply([], nodelist);
+			};
+
 			var loadConfigFromLocal = function() {}; //later
 			var saveConfigToLocal = function() {}; //later
 			var initialActionsMenu = function() {
@@ -768,6 +892,9 @@
 				getEl('canvas_width').placeholder = config.canvas_width;
 				getEl('canvas_height').placeholder = config.canvas_height;
 				//packer mode
+				nodeList2Array(getEl('packer_modes_fixed').getElementsByTagName('button')).concat(nodeList2Array(getEl('packer_modes_grow').getElementsByTagName('button'))).map(function(o){
+					removeClass(o, 'active');
+				});
 				switch(config.packer_mode) {
 					case 'bintree':
 						posCaculate = binTreePacker;
@@ -777,9 +904,15 @@
 						posCaculate = verticalPacker;
 						addClass(getEl(config.packer_mode), 'active');
 						break;
+					case 'bintreeGrow':
+						posCaculate = binTreeGrowPacker;
+						addClass(getEl(config.packer_mode), 'active');
 					default:
 				}
 				//zoom setting
+				nodeList2Array(getEl('zoom_factors').getElementsByTagName('button')).map(function(o){
+					removeClass(o, 'active');
+				});
 				if(!config.if_zoom) {
 					addClass(getEl('1x'), 'active');
 				}else if(config.zoom == 2) {
@@ -791,6 +924,8 @@
 				//magnet
 				if(config.if_magnet) {
 					addClass(getEl('magnet'), 'active');
+				}else {
+					removeClass(getEl('magnet'), 'active');
 				}
 				getEl('magnet_setting_value').placeholder = config.magnet_distance;
 				//template
@@ -852,7 +987,11 @@
 					};
 				};
 				var bindRadio = function(id_or_class, callback) {
-					var buttons = getEl(id_or_class).getElementsByTagName('button');
+					if(typeof id_or_class == 'string') {
+						var buttons = getEl(id_or_class).getElementsByTagName('button');
+					}else{
+						var buttons = id_or_class;
+					}
 					for(var i=0;i<buttons.length;i++) {
 						var b = buttons[i];
 						b.onclick = (function(b){
@@ -875,7 +1014,8 @@
 				};
 				return function(){
 					bindNav('.nav-tabs');
-					bindRadio('packer_modes', function(el){
+					bindRadio(nodeList2Array(getEl('packer_modes_fixed').getElementsByTagName('button')).concat(nodeList2Array(getEl('packer_modes_grow').getElementsByTagName('button'))
+					), function(el){
 						var id = el.id;
 						switch(id) {
 							case 'vertical':
@@ -884,7 +1024,10 @@
 							case 'bintree':
 								posCaculate = binTreePacker;
 								break;
+							case 'bintreeGrow':
+								posCaculate = binTreeGrowPacker;
 						}
+						config.packer_mode = id;
 						posCaculate();
 						refresh();
 					});
@@ -1037,7 +1180,7 @@
 				// Provide some basic currying to the user
 				return data ? fn( data ) : fn;
 			};
-			loadConfigFromLocal();
+			//loadConfigFromLocal();
 			initialActionsMenu();
 			binddingDoms();
 			resetCanvas();
