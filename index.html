@@ -369,7 +369,7 @@
 					var z = config.zoom;
 					zoomer.clear();
 					if(config.zoom_pixel) {
-						var sr = r / z;
+						var sr = Math.floor(r / z);
 						var sw = sr * 2;
 						var sh = sr * 2;
 						var tw = 2 * r; //reduce the target width and target height to make it faster
