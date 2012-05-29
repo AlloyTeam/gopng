@@ -277,12 +277,6 @@
 
 			</div>
 		</div>
-
-	<div id="ta">
-	<script type="text/javascript" src="http://tajs.qq.com/stats?sId=9504671" charset="UTF-8"></script>	
-	</div>	
-	</body>
-
 	<script>
 		;(function(namespace) {
 			//pandorid[at]gmail.com
@@ -298,26 +292,27 @@
 				magnet_distance: 8,
 				//zoom
 				if_zoom : true,
+				zoom_pixel : true,
 				zoom: 2,
-				zoom_radius: 100,
+				zoom_radius: 200,
 				//css template
 				absolute_path: 'http://gopng/static/images/sprite.png',
 				relative_path: '',
 				template: '#gopng_<%=name%>_outer {\n\
-    height: <%=h%>px;\n\
-    width: <%=w%>px;\n\
-    overflow: hidden;\n\
+	height: <%=h%>px;\n\
+	width: <%=w%>px;\n\
+	overflow: hidden;\n\
 }\n\
 #gopng_<%=name%> {\n\
-    background: url(<%=absolute_path%>) -<%=x%>px -<%=y%>px no-repeat;\n\
-    width: 100%;\n\
-    height: 100%;\n\
-    _background: none;\n\
-    _padding-left: <%=x%>px;\n\
-    _margin-left: -<%=x%>px;\n\
-    _padding-top: <%=y%>px;\n\
-    _margin-top: -<%=y%>px;\n\
-    _filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(sizingMethod=crop,src="<%=absolute_path%>");\n\
+	background: url(<%=absolute_path%>) -<%=x%>px -<%=y%>px no-repeat;\n\
+	width: 100%;\n\
+	height: 100%;\n\
+	_background: none;\n\
+	_padding-left: <%=x%>px;\n\
+	_margin-left: -<%=x%>px;\n\
+	_padding-top: <%=y%>px;\n\
+	_margin-top: -<%=y%>px;\n\
+	_filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(sizingMethod=crop,src="<%=absolute_path%>");\n\
 }\n\
 '
 
@@ -337,29 +332,57 @@
 				var init = function() {
 					zoom_canvas.style.display = 'block';
 				};
+				var pixelZoom = function(sx, sy, sw, sh, tx, ty, tw, th) {
+					var sdata = context.getImageData(sx, sy, sw, sh).data;
+					var target = context.createImageData(tw, th);
+					var tdata = target.data;
+					var mapx = [];
+					var ratiox = sw / tw, px = 0;
+					for (var i = 0; i < tw; ++i) {
+						mapx[i] = 4 * Math.floor(px);
+						px += ratiox;
+					}
+					var mapy = [];
+					var ratioy = sh / th, py = 0;
+					for (var i = 0; i < th; ++i) {
+						mapy[i] = 4 * sw * Math.floor(py);
+						py += ratioy;
+					}
+					var tp = 0;
+					for (py = 0; py < th; ++py) {
+						for (px = 0; px < tw; ++px) {
+							var sp = mapx[px] + mapy[py];
+							tdata[tp++] = sdata[sp++];
+							tdata[tp++] = sdata[sp++];
+							tdata[tp++] = sdata[sp++];
+							tdata[tp++] = sdata[sp++];
+						}
+					}
+					zoom_context.putImageData(target, tx, ty);
+				}
+
 				var snap = function() {
 					if(!mousedown || !config.if_zoom) {
 						return;
 					}
+					var r = config.zoom_radius;
+					var z = config.zoom;
 					zoomer.clear();
-					//draw zoom canvas
-					var shiftX = l - config.zoom_radius > 0 ? l - config.zoom_radius : 0;
-					var shiftY = t - config.zoom_radius > 0 ? t - config.zoom_radius : 0;
+					if(config.zoom_pixel) {
+						var sr = r / z;
+						var sw = sr * 2;
+						var sh = sr * 2;
+						var tw = 2 * r; //reduce the target width and target height to make it faster
+						var th = 2 * r; //reduce the target width and target height to make it faster
+						var shiftX = l - sr;
+						var shiftY = t - sr;
+						pixelZoom(shiftX, shiftY, sw, sh, l, t, tw, th);//now the loop always be 2R
+					}
+					zoom_context.globalCompositeOperation = 'destination-in'; //set
 					zoom_context.beginPath();
-					zoom_context.arc(l + 2*config.zoom_radius, t + 2*config.zoom_radius, config.zoom_radius * config.zoom, 2*Math.PI, false);
-					zoom_context.fillStyle = "white";
-					zoom_context.lineWidth = 3;
-					zoom_context.strokeStyle = '#8ED6EF';
+					zoom_context.arc(l + r, t + r, r, 2*Math.PI, false);
 					zoom_context.fill();
-					zoom_context.stroke();
-					zoom_context.drawImage(canvas, shiftX, shiftY, config.canvas_width - shiftX, config.canvas_height - shiftY, 
-						l, t, (config.canvas_width - shiftX) * config.zoom, (config.canvas_height - shiftY) * config.zoom
-					);
-					zoom_context.globalCompositeOperation = 'destination-in';
-					zoom_context.beginPath();
-					zoom_context.arc(l + 2*config.zoom_radius, t + 2*config.zoom_radius, config.zoom_radius * config.zoom, 2*Math.PI, false);
-					zoom_context.fill();
-					zoom_context.globalCompositeOperation = 'source-over';
+					zoom_context.globalCompositeOperation = 'source-over'; //restore 
 
 				}
 				var clear = function(){
@@ -1051,7 +1074,7 @@
 						e.preventDefault();
 						var value = getEl('zoom_setting_value').value;
 						if(value) {
-							config.zoom_radius = value;
+							config.zoom_radius = parseInt(value);
 						}
 					};
 
@@ -1065,8 +1088,7 @@
 						e.preventDefault();
 						var value = getEl('magnet_setting_value').value;
 						if(value) {
-							config.magnet_distance = value;
-							console.info(config)
+							config.magnet_distance = parseInt(value);
 						}
 					};
 					getEl('make').onclick = function() {
@@ -1189,16 +1211,22 @@
 			context.fillText("drop Images or an export file here...", config.canvas_width/2 - 260, config.canvas_height/2 - 40);
 			context.font = '10pt Calibri';
 		})('gopng');
-    </script>
+	</script>
+	<div id="ta">
+	<script type="text/javascript" src="http://tajs.qq.com/stats?sId=9504671" charset="UTF-8"></script>	
+	</div>	
+	</body>
 
-    <script type="text/javascript">
+
+
+	<script type="text/javascript">
 	  var _gaq = _gaq || [];
 	  _gaq.push(['_setAccount', 'UA-32103657-1']);
 	  _gaq.push(['_trackPageview']);
 	  (function() {
-	    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-	    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+		ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+		var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
 	  })();
 	</script>
 </html>
