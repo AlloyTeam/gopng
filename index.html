@@ -219,6 +219,7 @@
 										<div class="btn-group" id="packer_modes_grow">
 											<!--<button class="btn btn-primary disabled" id="verticalGrow" onclick="return false;">Vertical</button>-->
 											<button class="btn btn-primary" id="bintreeGrow" onclick="return false;">BinTree</button>
+											<button class="btn btn-primary" id="Minimize" onclick="return false;">Minimize</button>
 										</div>
 									</div>
 								</div>
@@ -473,32 +474,31 @@
 
 			};
 			var posCaculate = function(){};
-			var verticalPacker = function() {
-				resetCanvas();
-				var h_diff = 0;
-				imgObjects.map(function(o, i, all) {
-					o.y = h_diff;
-					o.x = 0;
-					h_diff += o.h;
-				});
-			};
-			var binTreePacker = (function() {
-				var Packer = function(w, h) {
+			var packers = (function(){
+				var binPacker = function(w, h) {
 					this.init(w, h);
 				};
-				Packer.prototype = {
+				binPacker.prototype = {
 					init: function(w, h) {
 						this.root = {x:0, y:0, w:w, h:h};
 					},
 					fit: function(objs) {
 						var node, _this = this;
+						var s;
 						objs.map(function(o, i){
 							if (node = _this.findNode(_this.root, o.w, o.h)) {
 								var fit = _this.splitNode(node, o.w, o.h);
 								o.x = fit.x;
 								o.y = fit.y;
+							}else {
+								s = true;
 							}
 						});
+						if(s) {
+							return {error:'notfind'}
+						}else {
+							return {};
+						}
 					},
 					findNode: function(node, w, h) {
 						if (node.used) {
@@ -518,24 +518,8 @@
 						return node;
 					}
 				};
-				return function() {
-					resetCanvas();
-					var packer = new Packer(config.canvas_width, config.canvas_height);
-					imgObjects.sort(function(a,b){
-						if(b.h-a.h!=0) {
-							return b.h-a.h;
-						}else {
-							return a.w-b.w;
-						}
-					})
-					packer.fit(imgObjects);
-				};
-			})();
-
-			//auto size grow
-			var binTreeGrowPacker = (function() {
-				Packer = function() { };
-				Packer.prototype = {
+				var binGrowPacker = function() { };
+				binGrowPacker.prototype = {
 					fit: function(objs) {
 						var node, len = objs.length, _this = this;
 						var w = len? objs[0].w : 0;
@@ -617,23 +601,97 @@
 						return this.splitNode(node, w, h);
 					}
 				};
-
-				return function() {
-					var packer = new Packer();
-					if(!imgObjects.length) return;
-					imgObjects.sort(function(a,b){
-						if(b.h-a.h!=0) {
-							return b.h-a.h;
-						}else {
-							return a.w-b.w;
+				return {
+					'bintree': function() {
+						resetCanvas();
+						var packer = new binPacker(config.canvas_width, config.canvas_height);
+						imgObjects.sort(function(a,b){
+							if(b.h-a.h!=0) {
+								return b.h-a.h;
+							}else {
+								return a.w-b.w;
+							}
+						})
+						var ret = packer.fit(imgObjects);
+						if(ret.error) {
+							alert('not fit!');
 						}
-					})
-					var root = packer.fit(imgObjects);
-					config.canvas_width = root.w;
-					config.canvas_height = root.h;
-					resetCanvas();
-					getEl('canvas_width').value = config.canvas_width;
-					getEl('canvas_height').value = config.canvas_height;
+					},
+					'vertical': function() {
+						resetCanvas();
+						var h_diff = 0;
+						imgObjects.map(function(o, i, all) {
+							o.y = h_diff;
+							o.x = 0;
+							h_diff += o.h;
+						});
+						if(h_diff > config.canvas_height) {
+							alert('not fit!');
+						}
+					},
+					'bintreeGrow': function() {
+						var packer = new binGrowPacker();
+						if(!imgObjects.length) return;
+						imgObjects.sort(function(a,b){
+							if(b.h-a.h!=0) {
+								return b.h-a.h;
+							}else {
+								return a.w-b.w;
+							}
+						})
+						var root = packer.fit(imgObjects);
+						config.canvas_width = root.w;
+						config.canvas_height = root.h;
+						resetCanvas();
+						getEl('canvas_width').value = config.canvas_width;
+						getEl('canvas_height').value = config.canvas_height;
+					},
+					'Minimize': function() {
+						resetCanvas();
+						var autoPacker = new binGrowPacker();
+						if(!imgObjects.length) return;
+						imgObjects.sort(function(a,b){
+							if(b.h-a.h!=0) {
+								return b.h-a.h;
+							}else {
+								return a.w-b.w;
+							}
+						});
+						var maxWidth = imgObjects.reduce(function(a, b){ 
+							if(a.w > b.w) {
+								return a;
+							}
+							return b;
+						}).w;
+						var firstTry = autoPacker.fit(imgObjects);
+						var totalWidth = firstTry.w;
+						var totalHeight = firstTry.h;
+						var area = totalHeight * totalWidth;
+						var tw, th;
+						var p, ret;
+						while(totalWidth-- > maxWidth) {
+							p = new binPacker(totalWidth, totalHeight);
+							ret = p.fit(imgObjects);
+							if(ret.error) {
+								while(ret.error) {
+									p = new binPacker(totalWidth, totalHeight);
+									ret = p.fit(imgObjects);
+									totalHeight++;
+								}
+							}
+							if(totalWidth * totalHeight < area) {
+								area = totalHeight * totalWidth;
+								tw = totalWidth;
+								th = totalHeight;
+							}
+						}
+						(new binPacker(tw, th)).fit(imgObjects);
+						config.canvas_width = tw;
+						config.canvas_height = th;
+						resetCanvas();
+						getEl('canvas_width').value = config.canvas_width;
+						getEl('canvas_height').value = config.canvas_height;
+					}
 				}
 			})();
 			
@@ -920,17 +978,11 @@
 				});
 				switch(config.packer_mode) {
 					case 'bintree':
-						posCaculate = binTreePacker;
-						addClass(getEl(config.packer_mode), 'active');
-						break;
 					case 'vertical':
-						posCaculate = verticalPacker;
-						addClass(getEl(config.packer_mode), 'active');
-						break;
 					case 'bintreeGrow':
-						posCaculate = binTreeGrowPacker;
+					case 'Minimize':
+						posCaculate = packers[config.packer_mode];
 						addClass(getEl(config.packer_mode), 'active');
-					default:
 				}
 				//zoom setting
 				nodeList2Array(getEl('zoom_factors').getElementsByTagName('button')).map(function(o){
@@ -1042,13 +1094,10 @@
 						var id = el.id;
 						switch(id) {
 							case 'vertical':
-								posCaculate = verticalPacker;
-								break;
 							case 'bintree':
-								posCaculate = binTreePacker;
-								break;
 							case 'bintreeGrow':
-								posCaculate = binTreeGrowPacker;
+							case 'Minimize':
+								posCaculate = packers[id];
 						}
 						config.packer_mode = id;
 						posCaculate();
